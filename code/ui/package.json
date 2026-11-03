@@ -1,0 +1,1 @@
+{"name":"aobp-identity-ui","version":"1.0.0","private":true,"type":"module","scripts":{"build":"vite build","dev":"vite --host 0.0.0.0","preview":"vite preview --host 0.0.0.0 --port 5173"},"dependencies":{"react":"19.0.0","react-dom":"19.0.0"},"devDependencies":{"vite":"6.4.1"}}

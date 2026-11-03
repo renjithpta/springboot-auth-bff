@@ -1,0 +1,603 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aobp
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: aobp
+data:
+  AUTH_ISSUER: http://127.0.0.1:9000
+  AUTH_INTERNAL_URL: http://auth-server:9000
+  BFF_CALLBACK: http://localhost:8080/login/oauth2/code/platform
+  BFF_LOGOUT: http://localhost:8080/
+  APP_URL: http://localhost:8080/
+  REDIS_HOST: redis
+  FLIGHT_URL: http://flight-service:8082
+  BFF_URL: http://bff:8081
+  UI_URL: http://ui:8080
+  COOKIE_SECURE: 'false'
+  DEMO_USERS: 'true'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: providers
+  namespace: aobp
+data:
+  providers.yml: "app:\n  federation:\n    enabled: false\n"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: auth-data
+  namespace: aobp
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data
+  namespace: aobp
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-server
+  namespace: aobp
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: auth-server
+  template:
+    metadata:
+      labels:
+        app: auth-server
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+      - name: auth-server
+        image: aobp/auth-server:local
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9000
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        envFrom:
+        - configMapRef:
+            name: app-config
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 9000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 9000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 9000
+          failureThreshold: 60
+          periodSeconds: 3
+        env:
+        - name: AUTH_DB_URL
+          value: jdbc:h2:file:/app/data/auth-db;DB_CLOSE_ON_EXIT=FALSE
+        - name: SIGNING_KEY_PATH
+          value: /keys/signing.pem
+        - name: SPRING_CONFIG_ADDITIONAL_LOCATION
+          value: optional:file:/config/providers.yml
+        - name: AUTH_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: AUTH_DB_PASSWORD
+        - name: BFF_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: BFF_CLIENT_SECRET
+        - name: DEMO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: DEMO_PASSWORD
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+        - name: keys
+          mountPath: /keys
+          readOnly: true
+        - name: providers
+          mountPath: /config
+          readOnly: true
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: auth-data
+      - name: keys
+        secret:
+          secretName: signing-key
+          defaultMode: 288
+      - name: providers
+        configMap:
+          name: providers
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-server
+  namespace: aobp
+spec:
+  selector:
+    app: auth-server
+  ports:
+  - port: 9000
+    targetPort: 9000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bff
+  namespace: aobp
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: bff
+  template:
+    metadata:
+      labels:
+        app: bff
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+      - name: bff
+        image: aobp/bff:local
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8081
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        envFrom:
+        - configMapRef:
+            name: app-config
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8081
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8081
+          failureThreshold: 60
+          periodSeconds: 3
+        env:
+        - name: BFF_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: BFF_CLIENT_SECRET
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: REDIS_PASSWORD
+        - name: TOKEN_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: TOKEN_ENCRYPTION_KEY
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bff
+  namespace: aobp
+spec:
+  selector:
+    app: bff
+  ports:
+  - port: 8081
+    targetPort: 8081
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flight-service
+  namespace: aobp
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: flight-service
+  template:
+    metadata:
+      labels:
+        app: flight-service
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+      - name: flight-service
+        image: aobp/flight-service:local
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8082
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        envFrom:
+        - configMapRef:
+            name: app-config
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8082
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8082
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8082
+          failureThreshold: 60
+          periodSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flight-service
+  namespace: aobp
+spec:
+  selector:
+    app: flight-service
+  ports:
+  - port: 8082
+    targetPort: 8082
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: aobp
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+      - name: gateway
+        image: aobp/gateway:local
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        envFrom:
+        - configMapRef:
+            name: app-config
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          failureThreshold: 60
+          periodSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: aobp
+spec:
+  selector:
+    app: gateway
+  ports:
+  - port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ui
+  namespace: aobp
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: ui
+  template:
+    metadata:
+      labels:
+        app: ui
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 10001
+      containers:
+      - name: ui
+        image: aobp/ui:local
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui
+  namespace: aobp
+spec:
+  selector:
+    app: ui
+  ports:
+  - port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: aobp
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+      - name: redis
+        image: redis:7.4-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 6379
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        envFrom: []
+        command:
+        - sh
+        - -c
+        - exec redis-server --appendonly yes --requirepass "$REDIS_PASSWORD"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping | grep -q PONG
+          periodSeconds: 5
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: REDIS_PASSWORD
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: redis-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: aobp
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: bff-ingress
+  namespace: aobp
+spec:
+  podSelector:
+    matchLabels:
+      app: bff
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: gateway
+    ports:
+    - protocol: TCP
+      port: 8081
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: flight-service-ingress
+  namespace: aobp
+spec:
+  podSelector:
+    matchLabels:
+      app: flight-service
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: bff
+    ports:
+    - protocol: TCP
+      port: 8082
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-ingress
+  namespace: aobp
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: bff
+    ports:
+    - protocol: TCP
+      port: 6379

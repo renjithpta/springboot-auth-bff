@@ -1,0 +1,18 @@
+# Copy to .runtime/providers.yml, fill metadata from each approved provider,
+# and set SPRING_CONFIG_ADDITIONAL_LOCATION=optional:file:./.runtime/providers.yml.
+app:
+  federation:
+    enabled: true
+    providers:
+      entra:
+        name: Microsoft Entra ID
+        client-id: ${ENTRA_CLIENT_ID}
+        client-secret: ${ENTRA_CLIENT_SECRET}
+        client-authentication-method: client_secret_post
+        issuer: https://login.microsoftonline.com/${ENTRA_TENANT_ID}/v2.0
+        authorization-uri: https://login.microsoftonline.com/${ENTRA_TENANT_ID}/oauth2/v2.0/authorize
+        token-uri: https://login.microsoftonline.com/${ENTRA_TENANT_ID}/oauth2/v2.0/token
+        jwks-uri: https://login.microsoftonline.com/${ENTRA_TENANT_ID}/discovery/v2.0/keys
+        user-info-uri: https://graph.microsoft.com/oidc/userinfo
+        callback: ${AUTH_ISSUER}/login/oauth2/code/entra
+      # Add okta, keycloak, or other OIDC entries using the same fields.

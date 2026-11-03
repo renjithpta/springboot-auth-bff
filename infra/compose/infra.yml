@@ -1,0 +1,15 @@
+services:
+  redis:
+    image: redis:7.4-alpine
+    command: ["sh", "-c", 'exec redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"']
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Run scripts/init.py first}
+    ports: ["127.0.0.1:6379:6379"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD-SHELL", 'REDISCLI_AUTH="$${REDIS_PASSWORD}" redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  redis-data:

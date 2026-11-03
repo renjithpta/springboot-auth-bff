@@ -1,0 +1,22 @@
+server:
+  port: ${FLIGHT_PORT:8082}
+spring:
+  application:
+    name: flight-service
+app:
+  issuer: ${AUTH_ISSUER:http://127.0.0.1:9000}
+  jwks: ${AUTH_INTERNAL_URL:http://127.0.0.1:9000}/oauth2/jwks
+  audience: ${API_AUDIENCE:flight-api}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+logging:
+  structured:
+    format:
+      console: logstash

@@ -1,0 +1,45 @@
+server:
+  port: ${BFF_PORT:8081}
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        name: BFF_SESSION
+        http-only: true
+        secure: ${COOKIE_SECURE:false}
+        same-site: lax
+spring:
+  application:
+    name: bff
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      timeout: 3s
+  session:
+    store-type: redis
+    redis:
+      namespace: aobp:bff:session
+app:
+  issuer: ${AUTH_ISSUER:http://127.0.0.1:9000}
+  auth-internal: ${AUTH_INTERNAL_URL:http://127.0.0.1:9000}
+  callback: ${BFF_CALLBACK:http://localhost:8080/login/oauth2/code/platform}
+  home: ${APP_URL:http://localhost:8080/}
+  client-id: ${BFF_CLIENT_ID:aobp-bff}
+  client-secret: ${BFF_CLIENT_SECRET}
+  encryption-key: ${TOKEN_ENCRYPTION_KEY}
+  flight-url: ${FLIGHT_URL:http://localhost:8082}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+logging:
+  structured:
+    format:
+      console: logstash

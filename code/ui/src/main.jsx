@@ -1,0 +1,19 @@
+import React, {useState, useEffect} from 'react';
+import {createRoot} from 'react-dom/client';
+import './style.css';
+/** Talks only to same-origin BFF endpoints; OAuth tokens never enter JavaScript. */
+function App(){
+ const [session,setSession]=useState(null),[flights,setFlights]=useState([]),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
+ async function request(path,method='GET'){
+  const headers={};
+  if(method!=='GET'){const r=await fetch('/bff/api/v1/csrf-token',{cache:'no-store'});if(!r.ok)throw Error('Unable to establish CSRF protection');const c=await r.json();headers[c.headerName]=c.token;}
+  const response=await fetch('/bff/api/v1/'+path,{method,headers,cache:'no-store'});
+  if(!response.ok){const p=await response.json().catch(()=>({}));throw Error(`${response.status}: ${p.detail||p.title||'Request rejected'}`);}
+  return response.status===204?null:response.json();
+ }
+ async function refresh(){try{const s=await request('session');setSession(s);if(s.authenticated){const f=await request('flights');setFlights(f.data);}}catch(e){setNotice(e.message);}}
+ useEffect(()=>{refresh();},[]);
+ async function act(action){setBusy(true);try{await action();}catch(e){setNotice(e.message);}finally{setBusy(false);}}
+ return <><header><div className="brand">A<span>O</span>BP <small>IDENTITY LAB</small></div><span className="tag">Spring Authorization Server · BFF</span></header><main><section className="hero"><div className="eyebrow">AIRPORT OPERATIONS PLATFORM</div><h1>One workspace.<br/>Every identity, protected.</h1><p>Enterprise SSO and local accounts share a secure login journey.<br/>Authorization stays with the service that owns the resource.</p></section><section className="grid"><article className="card"><span className="number">01 / YOUR SESSION</span><h2>{session?.authenticated?'You’re connected':'Start your secure session'}</h2><p>{session?.authenticated?`Signed in as ${session.subject}`:'Choose your organization provider or a local account on the identity service.'}</p>{session?.authenticated?<button className="secondary" disabled={busy} onClick={()=>act(async()=>{await request('session','DELETE');setSession({authenticated:false});setFlights([]);setNotice('Local session ended. The identity provider may still have an SSO session.');})}>End application session</button>:<a className="button" href="/oauth2/authorization/platform">Continue to sign in →</a>}<div className="note">Tokens stay on the server. Your browser uses a protected session cookie.</div></article><article className="card"><span className="number">02 / POLICY EXPLORER</span><h2>Flight permissions</h2><p>Operators can approve Terminal 1. Viewers can read. Terminal 2 tests a resource-policy denial.</p><div className="actions"><button disabled={!session?.authenticated||busy} onClick={()=>act(async()=>{const x=await request('flights/FL-101/delay-approvals','POST');setNotice(x.data.result+' · FL-101');})}>Approve FL-101 · T1</button><button className="secondary" disabled={!session?.authenticated||busy} onClick={()=>act(async()=>{await request('flights/FL-202/delay-approvals','POST');})}>Test FL-202 · T2 denial</button></div></article></section>{notice&&<div role="status" className="notice">{notice}</div>}<section className="card resources"><div className="row"><h2>Your visible flights</h2><button className="secondary" onClick={refresh}>Refresh</button></div>{flights.length?<table><thead><tr><th>Flight</th><th>Terminal</th><th>Destination</th><th>Status</th></tr></thead><tbody>{flights.map(f=><tr key={f.id}><td>{f.id}</td><td>{f.terminal}</td><td>{f.destination}</td><td><span className="pill">{f.status}</span></td></tr>)}</tbody></table>:<p>Sign in to see resources allowed by your terminal assignment.</p>}</section><footer>Authorization code + PKCE <span>•</span> Server-side token relay <span>•</span> Service-local RBAC & ABAC</footer></main></>;
+}
+createRoot(document.getElementById('root')).render(<App/>);

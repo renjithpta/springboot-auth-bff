@@ -1,0 +1,59 @@
+name: Verify reference application
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: code/ui/package-lock.json
+      - name: Install Redis
+        run: sudo apt-get update && sudo apt-get install -y redis-server
+      - name: Pin Maven 3.9.11
+        run: |
+          curl -fsSLo /tmp/maven.tgz https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.11/apache-maven-3.9.11-bin.tar.gz
+          curl -fsSLo /tmp/maven.sha512 https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.11/apache-maven-3.9.11-bin.tar.gz.sha512
+          echo "$(cat /tmp/maven.sha512)  /tmp/maven.tgz" | sha512sum -c -
+          tar xzf /tmp/maven.tgz -C /tmp
+          echo /tmp/apache-maven-3.9.11/bin >> "$GITHUB_PATH"
+      - name: Build and test
+        run: scripts/build.sh
+      - name: Native authentication and authorization
+        run: |
+          sudo systemctl stop redis-server
+          python3 scripts/init.py
+          ACCESS_TOKEN_TTL=PT10S scripts/native.sh start --redis --simulator
+          python3 scripts/smoke.py --federation --refresh
+          python3 scripts/token-boundary.py
+      - name: Stop native processes
+        if: always()
+        run: scripts/native.sh stop
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start containers
+        run: scripts/compose.sh up --build -d
+      - name: Wait and test
+        run: |
+          for attempt in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:9000/.well-known/openid-configuration >/dev/null && curl -fsS http://localhost:8080/ >/dev/null && curl -fsS http://localhost:8080/bff/api/v1/session; then break; fi
+            sleep 3
+          done
+          python3 scripts/smoke.py
+      - name: Container logs on failure
+        if: failure()
+        run: scripts/compose.sh logs --tail=150
+      - name: Stop containers
+        if: always()
+        run: scripts/compose.sh down

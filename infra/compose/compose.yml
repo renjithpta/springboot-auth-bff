@@ -1,0 +1,80 @@
+services:
+  redis:
+    extends:
+      file: infra.yml
+      service: redis
+  auth-server:
+    user: ${LOCAL_UID:-10001}:${LOCAL_GID:-10001}
+    image: aobp/auth-server:local
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.java
+      args:
+        MODULE: auth-server
+    environment:
+      AUTH_DB_URL: jdbc:h2:file:/app/data/auth-db;DB_CLOSE_ON_EXIT=FALSE
+      SIGNING_KEY_PATH: /keys/signing.pem
+      SPRING_CONFIG_ADDITIONAL_LOCATION: optional:file:/config/providers.yml
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
+      BFF_CLIENT_SECRET: ${BFF_CLIENT_SECRET}
+      DEMO_PASSWORD: ${DEMO_PASSWORD}
+      DEMO_USERS: ${DEMO_USERS}
+    ports:
+    - 127.0.0.1:9000:9000
+    volumes:
+    - ../../.runtime/signing.pem:/keys/signing.pem:ro
+    - ../../.runtime/providers.yml:/config/providers.yml:ro
+    - ../../.runtime:/app/data
+  flight-service:
+    image: aobp/flight-service:local
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.java
+      args:
+        MODULE: flight-service
+    environment:
+      AUTH_INTERNAL_URL: http://auth-server:9000
+    depends_on:
+    - auth-server
+  bff:
+    image: aobp/bff:local
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.java
+      args:
+        MODULE: bff
+    environment:
+      REDIS_HOST: redis
+      AUTH_INTERNAL_URL: http://auth-server:9000
+      FLIGHT_URL: http://flight-service:8082
+      BFF_CLIENT_SECRET: ${BFF_CLIENT_SECRET}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+      auth-server:
+        condition: service_started
+  ui:
+    image: aobp/ui:local
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.ui
+  gateway:
+    image: aobp/gateway:local
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.java
+      args:
+        MODULE: gateway
+    environment:
+      BFF_URL: http://bff:8081
+      UI_URL: http://ui:8080
+    ports:
+    - 127.0.0.1:8080:8080
+    depends_on:
+    - bff
+    - ui
+volumes:
+  redis-data: null
+  auth-data: null

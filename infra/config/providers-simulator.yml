@@ -1,0 +1,15 @@
+app:
+  simulator-link: true
+  federation:
+    enabled: true
+    providers:
+      simulator:
+        name: Airport Partner (local OIDC simulator)
+        client-id: upstream-client
+        client-secret: ${UPSTREAM_CLIENT_SECRET}
+        issuer: ${SIMULATOR_ISSUER:http://127.0.0.1:9001}
+        authorization-uri: ${SIMULATOR_ISSUER:http://127.0.0.1:9001}/oauth2/authorize
+        token-uri: ${SIMULATOR_INTERNAL_URL:http://127.0.0.1:9001}/oauth2/token
+        jwks-uri: ${SIMULATOR_INTERNAL_URL:http://127.0.0.1:9001}/oauth2/jwks
+        user-info-uri: ${SIMULATOR_INTERNAL_URL:http://127.0.0.1:9001}/userinfo
+        callback: ${UPSTREAM_CALLBACK:http://127.0.0.1:9000/login/oauth2/code/simulator}

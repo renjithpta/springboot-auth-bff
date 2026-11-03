@@ -1,0 +1,42 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+logging:
+  structured:
+    format:
+      console: logstash
+
+server:
+  port: ${AUTH_PORT:9000}
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        name: AUTH_SESSION
+        http-only: true
+        secure: ${COOKIE_SECURE:false}
+        same-site: lax
+spring:
+  application:
+    name: auth-server
+  datasource:
+    url: ${AUTH_DB_URL:jdbc:h2:file:./.runtime/auth-db;DB_CLOSE_ON_EXIT=FALSE}
+    username: ${AUTH_DB_USER:sa}
+    password: ${AUTH_DB_PASSWORD}
+app:
+  issuer: ${AUTH_ISSUER:http://127.0.0.1:9000}
+  signing-key: ${SIGNING_KEY_PATH:./.runtime/signing.pem}
+  bff-client-id: ${BFF_CLIENT_ID:aobp-bff}
+  bff-secret: ${BFF_CLIENT_SECRET}
+  bff-callback: ${BFF_CALLBACK:http://localhost:8080/login/oauth2/code/platform}
+  bff-logout: ${BFF_LOGOUT:http://localhost:8080/}
+  access-ttl: ${ACCESS_TOKEN_TTL:PT2M}
+  refresh-ttl: ${REFRESH_TOKEN_TTL:PT30M}
+  demo-users: ${DEMO_USERS:false}
+  demo-password: ${DEMO_PASSWORD:}

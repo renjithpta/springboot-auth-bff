@@ -1,0 +1,11 @@
+**/target/
+**/node_modules/
+**/dist/
+.runtime/
+.env
+*.log
+*.pem
+*.key
+__pycache__/
+
+.tooling/
