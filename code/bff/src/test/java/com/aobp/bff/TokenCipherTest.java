@@ -22,8 +22,10 @@ class TokenCipherTest {
   void rejectsInvalidKey() {
     assertThrows(IllegalArgumentException.class, () -> new TokenCipher("YQ=="));
   }
+
   /** Spring Session writes empty bytes for removed attributes; these must deserialize as null. */
-  @Test void sessionSerializerHandlesRemovedAttributes() {
+  @Test
+  void sessionSerializerHandlesRemovedAttributes() {
     var cipher = new TokenCipher(Base64.getEncoder().encodeToString(new byte[32]));
     var serializer = new BffSecurity().sessionSerializer(cipher);
     assertNull(serializer.deserialize(new byte[0]));

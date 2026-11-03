@@ -65,7 +65,7 @@ jobs:
         run: |
           curl -fsSLo /tmp/kind https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64
           curl -fsSLo /tmp/kind.sha256 https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64.sha256sum
-          (cd /tmp && sha256sum -c kind.sha256)
+          echo "$(cut -d ' ' -f1 /tmp/kind.sha256)  /tmp/kind" | sha256sum -c -
           chmod +x /tmp/kind
           /tmp/kind create cluster --name aobp --wait 120s
       - name: Build and load images

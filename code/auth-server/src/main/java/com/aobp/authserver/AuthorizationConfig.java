@@ -218,7 +218,10 @@ public class AuthorizationConfig {
         context
             .getClaims()
             .audience(new ArrayList<>(List.of("flight-api")))
-            .claim("roles", new ArrayList<>(users.authorities(name).stream().map(a -> a.getAuthority()).toList()))
+            .claim(
+                "roles",
+                new ArrayList<>(
+                    users.authorities(name).stream().map(a -> a.getAuthority()).toList()))
             .claim("terminals", users.terminals(name));
       }
     };
