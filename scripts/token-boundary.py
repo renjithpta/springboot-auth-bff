@@ -4,6 +4,12 @@ import base64,json,subprocess,time,urllib.request,urllib.error
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 http=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+try:
+    http.open('http://localhost:8082/api/v1/flights')
+    raise AssertionError('Anonymous direct API request must fail')
+except urllib.error.HTTPError as error:
+    assert error.code==401
+    print('PASS JWT boundary: anonymous request 401')
 keys=json.load(http.open('http://127.0.0.1:9000/oauth2/jwks'))
 kid=keys['keys'][0]['kid']
 def encode(value):return base64.urlsafe_b64encode(json.dumps(value,separators=(',',':')).encode()).rstrip(b'=')

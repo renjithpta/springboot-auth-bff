@@ -34,12 +34,17 @@ public class EncryptedClients implements OAuth2AuthorizedClientService {
     this.registrations = registrations;
   }
 
-  /** Restricts keys to the current session rather than using the user's subject alone. */
+  /** Uses a session-owned storage ID that survives Spring's login-time session ID rotation. */
   public String key(String registration, String principal) {
     var attrs =
         (org.springframework.web.context.request.ServletRequestAttributes)
             org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes();
-    String session = attrs.getRequest().getSession().getId();
+    var httpSession = attrs.getRequest().getSession();
+    String session = (String) httpSession.getAttribute("AUTHORIZED_CLIENT_STORAGE_ID");
+    if (session == null) {
+      session = UUID.randomUUID().toString();
+      httpSession.setAttribute("AUTHORIZED_CLIENT_STORAGE_ID", session);
+    }
     try {
       return "aobp:client:"
           + HexFormat.of()

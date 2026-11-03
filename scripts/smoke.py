@@ -43,7 +43,6 @@ def logout(c):
     status,body,_,_=call(c,'/bff/api/v1/session');check(not json.loads(body)['authenticated'],'logged-out browser is anonymous')
 c=browser()
 check(call(c,'/bff/api/v1/flights')[0]==401,'anonymous API request returns 401')
-check(call(c,'http://localhost:8082/api/v1/flights')[0]==401,'direct API request without token returns 401')
 operator=login('operator')
 status,body,_,_=call(operator,'/bff/api/v1/flights')
 if status!=200:print('Business request failed',status,body[:400])

@@ -57,3 +57,36 @@ jobs:
       - name: Stop containers
         if: always()
         run: scripts/compose.sh down
+  kubernetes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create local Kubernetes cluster
+        run: |
+          curl -fsSLo /tmp/kind https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64
+          curl -fsSLo /tmp/kind.sha256 https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64.sha256sum
+          (cd /tmp && sha256sum -c kind.sha256)
+          chmod +x /tmp/kind
+          /tmp/kind create cluster --name aobp --wait 120s
+      - name: Build and load images
+        run: |
+          scripts/k8s.sh build
+          /tmp/kind load docker-image --name aobp aobp/auth-server:local aobp/bff:local aobp/flight-service:local aobp/gateway:local aobp/ui:local
+      - name: Deploy plain manifests and verify BFF flow
+        run: |
+          scripts/k8s.sh deploy
+          scripts/k8s.sh forward > .runtime/port-forward.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/bff/api/v1/session; then break; fi
+            sleep 2
+          done
+          python3 scripts/smoke.py
+      - name: Kubernetes diagnostics
+        if: failure()
+        run: |
+          kubectl -n aobp get pods,pvc,events
+          kubectl -n aobp logs deployment/auth-server --tail=80
+          kubectl -n aobp logs deployment/bff --all-pods=true --tail=80
+      - name: Remove test cluster
+        if: always()
+        run: /tmp/kind delete cluster --name aobp

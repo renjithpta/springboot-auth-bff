@@ -45,7 +45,7 @@ def jar(module):
 try:
     if args.redis:start('redis',['redis-server',str(runtime/'redis.conf')])
     if args.simulator:
-        start('simulator',jar('auth-server'),{'AUTH_PORT':'9001','AUTH_ISSUER':'http://127.0.0.1:9001','AUTH_DB_URL':'jdbc:h2:file:./.runtime/simulator-db;DB_CLOSE_ON_EXIT=FALSE','SIGNING_KEY_PATH':str(runtime/'simulator-signing.pem'),'BFF_CLIENT_ID':'upstream-client','BFF_CLIENT_SECRET':env['UPSTREAM_CLIENT_SECRET'],'BFF_CALLBACK':'http://127.0.0.1:9000/login/oauth2/code/simulator','BFF_LOGOUT':'http://127.0.0.1:9000/login'},'http://127.0.0.1:9001/actuator/health')
+        start('simulator',jar('auth-server'),{'SERVER_SERVLET_SESSION_COOKIE_NAME':'SIMULATOR_SESSION','AUTH_PORT':'9001','AUTH_ISSUER':'http://127.0.0.1:9001','AUTH_DB_URL':'jdbc:h2:file:./.runtime/simulator-db;DB_CLOSE_ON_EXIT=FALSE','SIGNING_KEY_PATH':str(runtime/'simulator-signing.pem'),'BFF_CLIENT_ID':'upstream-client','BFF_CLIENT_SECRET':env['UPSTREAM_CLIENT_SECRET'],'BFF_CALLBACK':'http://127.0.0.1:9000/login/oauth2/code/simulator','BFF_LOGOUT':'http://127.0.0.1:9000/login'},'http://127.0.0.1:9001/actuator/health')
     extra={'SPRING_CONFIG_ADDITIONAL_LOCATION':'optional:file:./infra/config/providers-simulator.yml'} if args.simulator else {}
     start('auth-server',jar('auth-server'),extra,'http://127.0.0.1:9000/actuator/health')
     start('flight-service',jar('flight-service'),health='http://127.0.0.1:8082/actuator/health')

@@ -66,7 +66,7 @@ public class FlightRelay {
       return client.getAccessToken().getTokenValue();
     } catch (OAuth2AuthorizationException e) {
       String code = e.getError().getErrorCode();
-      org.slf4j.LoggerFactory.getLogger(getClass()).warn("Refresh failed code={} detail={}",code,e.getMessage());
+      org.slf4j.LoggerFactory.getLogger(getClass()).warn("Refresh failed code={}",code);
       if ("invalid_grant".equals(code) || "invalid_token".equals(code)) {
         clients.removeAuthorizedClient("platform", user.getName());
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sign-in required");
