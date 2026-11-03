@@ -1,5 +1,7 @@
 # AOBP Spring identity reference application
 
+[![Verify reference application](https://github.com/renjithpta/springboot-auth-bff/actions/workflows/verify.yml/badge.svg)](https://github.com/renjithpta/springboot-auth-bff/actions/workflows/verify.yml)
+
 A runnable security sample for Java 17, Spring Boot **3.4.13**, Spring Cloud Gateway **2024.0.3 BOM**, and Maven **3.9.x**. A separate React UI uses a confidential BFF. A Spring Authorization Server authenticates local database accounts and any configured OIDC providers. The Flight API validates application tokens and applies **RBAC and terminal-based ABAC**.
 
 > This is an educational reference, not a turnkey production identity product. Boot 3.4 reached end of open-source support in December 2025. The requested version is retained deliberately. Read [security and production gaps](docs/security.md) before using real users or data.

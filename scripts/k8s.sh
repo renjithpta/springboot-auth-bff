@@ -17,6 +17,6 @@ case "${1:-deploy}" in
   first=$!
   trap 'kill "$first" 2>/dev/null || true' EXIT INT TERM
   kubectl -n aobp port-forward service/gateway 8080:8080 --address 127.0.0.1 ;;
- stop) kubectl -n aobp scale deployment --all --replicas=0 ;;
+ stop) kubectl -n aobp scale deployment auth-server bff flight-service gateway ui redis --replicas=0 ;;
  *) echo 'Usage: scripts/k8s.sh build|deploy|forward|stop'; exit 2 ;;
 esac

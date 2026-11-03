@@ -1,0 +1,52 @@
+Native smoke and signed-token boundary results, 3 November 2026
+
+PASS anonymous API request returns 401
+PASS login redirects to identity server
+PASS identity login form has CSRF protection
+PASS operator establishes BFF session
+PASS session JSON exposes no OAuth tokens
+PASS RBAC read and terminal visibility filter
+PASS missing browser CSRF token returns 403
+PASS CSRF token endpoint succeeds
+PASS operator may approve assigned T1 resource
+PASS CSRF token endpoint succeeds
+PASS ABAC denies other terminal
+PASS login redirects to identity server
+PASS identity login form has CSRF protection
+PASS operator establishes BFF session
+PASS session JSON exposes no OAuth tokens
+PASS login redirects to identity server
+PASS identity login form has CSRF protection
+PASS viewer establishes BFF session
+PASS session JSON exposes no OAuth tokens
+PASS CSRF token endpoint succeeds
+PASS RBAC denies viewer write even within assigned terminal
+PASS expired access token refreshes without browser reauthentication
+PASS CSRF token endpoint succeeds
+PASS logout invalidates local session
+PASS logged-out browser is anonymous
+PASS CSRF token endpoint succeeds
+PASS logout invalidates local session
+PASS logged-out browser is anonymous
+PASS logging out one browser preserves the same user's other browser session
+PASS CSRF token endpoint succeeds
+PASS logout invalidates local session
+PASS logged-out browser is anonymous
+PASS login redirects to identity server
+PASS provider selection redirects to simulator
+PASS identity login form has CSRF protection
+PASS sim-user establishes BFF session
+PASS session JSON exposes no OAuth tokens
+PASS federated identity obtains application-issued API token
+PASS CSRF token endpoint succeeds
+PASS logout invalidates local session
+PASS logged-out browser is anonymous
+Completed 41 checks.
+
+PASS JWT boundary: anonymous request 401
+PASS JWT boundary: valid 200
+PASS JWT boundary: wrong-audience 401
+PASS JWT boundary: wrong-issuer 401
+PASS JWT boundary: expired 401
+PASS JWT boundary: missing-role 403
+PASS JWT boundary: missing-read-scope 403
