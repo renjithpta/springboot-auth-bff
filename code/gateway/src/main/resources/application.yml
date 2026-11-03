@@ -22,6 +22,9 @@ spring:
           uri: ${UI_URL:http://localhost:5173}
           predicates:
             - Path=/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RemoveRequestHeader=Authorization
 management:
   endpoints:
     web:

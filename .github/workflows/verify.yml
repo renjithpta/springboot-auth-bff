@@ -4,6 +4,11 @@ permissions:
   contents: read
 jobs:
   native:
+    name: ${{ matrix.mode }}
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [native, hybrid]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,18 +37,29 @@ jobs:
         run: |
           sudo systemctl stop redis-server
           python3 scripts/init.py
-          ACCESS_TOKEN_TTL=PT10S scripts/native.sh start --redis --simulator
+          if [[ "${{ matrix.mode }}" == hybrid ]]; then
+            ACCESS_TOKEN_TTL=PT10S scripts/hybrid.sh start --simulator
+          else
+            ACCESS_TOKEN_TTL=PT10S scripts/native.sh start --redis --simulator
+          fi
           python3 scripts/smoke.py --federation --refresh
           python3 scripts/token-boundary.py
       - name: Stop native processes
         if: always()
-        run: scripts/native.sh stop
+        run: |
+          if [[ "${{ matrix.mode }}" == hybrid ]]; then scripts/hybrid.sh stop; else scripts/native.sh stop; fi
   compose:
+    name: ${{ matrix.mode }}
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [compose, docker-cli]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build and start containers
-        run: scripts/compose.sh up --build -d
+        run: |
+          if [[ "${{ matrix.mode }}" == compose ]]; then scripts/compose.sh up --build -d; else scripts/docker.sh start; fi
       - name: Wait and test
         run: |
           for attempt in $(seq 1 90); do
@@ -53,10 +69,16 @@ jobs:
           python3 scripts/smoke.py
       - name: Container logs on failure
         if: failure()
-        run: scripts/compose.sh logs --tail=150
+        run: |
+          if [[ "${{ matrix.mode }}" == compose ]]; then
+            scripts/compose.sh logs --tail=150
+          else
+            for service in auth-server bff flight-service gateway; do docker logs "aobp-$service" --tail=100; done
+          fi
       - name: Stop containers
         if: always()
-        run: scripts/compose.sh down
+        run: |
+          if [[ "${{ matrix.mode }}" == compose ]]; then scripts/compose.sh down; else scripts/docker.sh stop; fi
   kubernetes:
     runs-on: ubuntu-latest
     steps:
