@@ -156,6 +156,7 @@ spec:
       - name: providers
         configMap:
           name: providers
+      enableServiceLinks: false
 ---
 apiVersion: v1
 kind: Service
@@ -246,6 +247,7 @@ spec:
             secretKeyRef:
               name: app-secrets
               key: TOKEN_ENCRYPTION_KEY
+      enableServiceLinks: false
 ---
 apiVersion: v1
 kind: Service
@@ -320,6 +322,7 @@ spec:
             port: 8082
           failureThreshold: 60
           periodSeconds: 3
+      enableServiceLinks: false
 ---
 apiVersion: v1
 kind: Service
@@ -394,6 +397,7 @@ spec:
             port: 8080
           failureThreshold: 60
           periodSeconds: 3
+      enableServiceLinks: false
 ---
 apiVersion: v1
 kind: Service
@@ -451,6 +455,7 @@ spec:
           httpGet:
             path: /
             port: 8080
+      enableServiceLinks: false
 ---
 apiVersion: v1
 kind: Service
@@ -529,6 +534,7 @@ spec:
       - name: data
         persistentVolumeClaim:
           claimName: redis-data
+      enableServiceLinks: false
 ---
 apiVersion: v1
 kind: Service

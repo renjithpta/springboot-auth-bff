@@ -14,6 +14,7 @@ assert names == {"gateway", "ui", "bff", "auth-server", "flight-service", "redis
 for o in objects:
     if o["kind"] == "Deployment":
         assert o["spec"]["template"]["spec"]["securityContext"]["runAsNonRoot"]
+        assert o["spec"]["template"]["spec"]["enableServiceLinks"] is False
         for c in o["spec"]["template"]["spec"]["containers"]:
             assert "resources" in c
 print("PASS YAML parsing, service inventory and deployment security structure")

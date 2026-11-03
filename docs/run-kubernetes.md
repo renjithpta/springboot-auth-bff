@@ -27,6 +27,8 @@ kubectl -n aobp get pods,services,pvc
 
 The script initializes local secrets, creates Kubernetes Secrets from files, and applies plain manifests. No live credentials are committed. `secret.example.yaml` is documentation only; do not apply it with placeholders. Kubernetes Secret encoding is not encryption; enable cluster encryption at rest and least-privilege RBAC.
 
+The manifests disable Kubernetes service-link environment injection (`enableServiceLinks: false`) so generated variables such as BFF_PORT cannot override numeric application port settings. Services use DNS and the explicit ConfigMap instead.
+
 Expected: two BFF pods, one instance of each other service, and bound auth/Redis PVCs. The identity server deliberately remains single replica because its demo H2 file database and HTTP sessions are not cluster-ready.
 
 ## Step 3 — expose the two browser-facing endpoints
